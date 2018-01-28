@@ -27,6 +27,7 @@ end
 
 Product.where(active: true).where("author_id IS NOT NULL").where(created_at: 2.days.ago..1.day.ago).order(:created_at).to_a
 Product.where("active = ?", 1).where("author_id IS NULL").order("created_at DESC").to_a
+Product.order("active, created_at DESC, author_id").to_a
 Product.where.not(active: true).to_a
 Product.where("`title` LIKE ?", "locales/%").to_a
 Product.where("`title` IS NOT NULL").to_a

@@ -7,14 +7,45 @@ module QueryInspector
       raise ArgumentError, "logger must be set"
     end
 
+    where_columns = referenced_columns(relation)
+    order_columns = columns_from_order(relation)
+
+    columns = where_columns + order_columns
+    logger.info "#{relation.to_sql} => #{columns.to_a}" if columns.any?
+  end
+
+  def columns_from_order(relation)
+    columns = [].to_set
+    relation.order_values.each do |node|
+      case node
+      when String
+        cols = node.split(",").map(&:strip)
+        cols.each do |col|
+          if match = col.match(/^(\S+)(\w(desc|DESC|asc|ASC))?/)
+            columns << column_with_table_name(match[1], relation.table_name)
+          else
+            logger.warn "Failed to parse #{node.inspect}"
+          end
+        end
+      when Arel::Nodes::Ascending, Arel::Nodes::Descending
+        node.value.name
+      else
+        logger.warn "Unknown node: #{node.class}"
+      end
+    end
+    columns
+  end
+
+  def referenced_columns(relation)
     columns_used = [].to_set
+
     relation.where_clause.send(:predicates).each do |node|
       case node
       when String
         case node
         when "1=0"
           # fake query, no-op
-          return
+          return [].to_set
         when (/^(\S+) (IS|is|like|LIKE|=|>|<|>=|<=|!=)/)
           columns_used << column_with_table_name($1, relation.table_name)
         else
@@ -36,7 +67,7 @@ module QueryInspector
         logger.warn "Unknown node: #{node.class}"
       end
     end
-    logger.info "#{relation.to_sql} => #{columns_used.to_a}" if columns_used.any?
+    columns_used
   end
 
   def column_with_table_name(column, table_name)
