@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 require "bundler/setup"
 require "active_record"
+require "sqlite3"
 require_relative './inject_query_inspector.rb'
 
 logger = Logger.new(STDOUT)
@@ -24,8 +25,8 @@ end
 
 # Writing tests is too hard.
 
-Product.where(active: true).where("author_id IS NOT NULL").where(created_at: 2.days.ago..1.day.ago).to_a
-Product.where("active = ?", 1).where("author_id IS NULL").to_a
+Product.where(active: true).where("author_id IS NOT NULL").where(created_at: 2.days.ago..1.day.ago).order(:created_at).to_a
+Product.where("active = ?", 1).where("author_id IS NULL").order("created_at DESC").to_a
 Product.where.not(active: true).to_a
 Product.where("`title` LIKE ?", "locales/%").to_a
 Product.where("`title` IS NOT NULL").to_a
