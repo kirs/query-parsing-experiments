@@ -4,14 +4,31 @@ module QueryInspector
 
   def call(relation)
     unless logger
-      raise ArgumentError, "logger must be set"
+      raise ArgumentError, "QueryInspector.logger must be set"
     end
 
     where_columns = referenced_columns(relation)
     order_columns = columns_from_order(relation)
 
+    indexes = relation_indexes(relation)
     columns = where_columns + order_columns
     logger.info "#{relation.to_sql} => #{columns.to_a}" if columns.any?
+
+    columns_hit_index = columns.count { |col| indexes.any? { |index| index_matches_column?(index, col) } }
+
+    # match ORDER BY shop_id, created_at with shop_id_and_created_at index
+    # match WHERE shop_id, created_at with shop_id_and_created_at index
+    #
+    # More examples: https://github.com/Shopify/appscale-team/issues/12
+    # first basic rule: hit at least one index
+  end
+
+  def relation_indexes(relation)
+    relation.model.connection.indexes(relation.table_name)
+  end
+
+  def index_matches_column?(index, column)
+    index.columns.first == column.split(".").last
   end
 
   def columns_from_order(relation)
